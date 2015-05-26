@@ -17,8 +17,8 @@ cd binutils-build
     --disable-nls              \
     --disable-werror
 
-make -j8 | grep error
-make -j8 install | grep error
+make -j8 
+make -j8 install
 
 cd ..
 rm -rf binutils-build binutils-2.25
