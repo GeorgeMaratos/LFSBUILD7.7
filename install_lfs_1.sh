@@ -92,7 +92,7 @@ rm -rf gcc-build gcc-4.9.2
 
 tar xf linux-3.19.tar.xz
 
-cd linux-3.19.tar.xz
+cd linux-3.19
 
 make -j8 mrproper
 
