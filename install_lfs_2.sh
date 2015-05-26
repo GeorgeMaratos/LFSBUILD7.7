@@ -122,4 +122,191 @@ mkdir -pv /etc/ld.so.conf.d
 cd ..
 rm -rf glibc-build glibc-2.21
 
+#adjusting the toolchain
+
+mv -v /tools/bin/{ld,ld-old}
+mv -v /tools/$(gcc -dumpmachine)/bin/{ld,ld-old}
+mv -v /tools/bin/{ld-new,ld}
+ln -sv /tools/bin/ld /tools/$(gcc -dumpmachine)/bin/ld
+
+gcc -dumpspecs | sed -e 's@/tools@@g'                   \
+    -e '/\*startfile_prefix_spec:/{n;s@.*@/usr/lib/ @}' \
+    -e '/\*cpp:/{n;s@$@ -isystem /usr/include@}' >      \
+    `dirname $(gcc --print-libgcc-file-name)`/specs
+
+
+#checking sanity of the tool chain
+echo 'main(){}' > dummy.c
+cc dummy.c -v -Wl,--verbose &> dummy.log
+readelf -l a.out | grep ': /lib'
+
+grep -o '/usr/lib.*/crt[1in].*succeeded' dummy.log
+
+grep -B1 '^ /usr/include' dummy.log
+
+grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
+
+grep "/lib.*/libc.so.6 " dummy.log
+
+grep found dummy.log
+
+
+
+read -rsp $'Press any key to continue...\n' -n1 key
+rm -v dummy.c a.out dummy.log
+
+#zlib
+
+tar xf zlib-1.2.8.tar.xz
+
+cd zlib-1.2.8
+
+./configure --prefix=/usr
+make
+make install
+mv -v /usr/lib/libz.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libz.so) /usr/lib/libz.so
+
+cd ..
+rm -rf zlib-1.2.8
+
+#file
+
+tar xf file-5.22.tar.gz
+
+cd file-5.22
+
+./configure --prefix=/usr
+make
+make install
+
+cd ..
+rm -rf file-5.22
+
+#binutils
+
+tar xf binutils-2.25.tar.bz2
+
+cd binutils-2.25
+
+mkdir -v ../binutils-build
+cd ../binutils-build
+
+../binutils-2.25/configure --prefix=/usr   \
+                           --enable-shared \
+                           --disable-werror
+
+make -j8 tooldir=/usr
+
+make -j8 tooldir=/usr install
+
+cd ..
+rm -rf binutils-2.25 binutils-build
+
+#gmp
+
+tar xf gmp-6.0.0a.tar.xz
+
+cd gmp-6.0.0a
+
+ABI=32 ./configure --prefix=/usr \
+            --enable-cxx  \
+            --docdir=/usr/share/doc/gmp-6.0.0a
+
+make -j8
+make -j8 html
+
+make -j8 install
+make -j8 install-html
+
+cd ..
+rm -rf gmp-6.0.0a
+
+#mpfr
+
+tar xf mpfr-3.1.2.tar.xz
+
+cd mpfr-3.1.2
+patch -Np1 -i ../mpfr-3.1.2-upstream_fixes-3.patch
+
+./configure --prefix=/usr        \
+            --enable-thread-safe \
+            --docdir=/usr/share/doc/mpfr-3.1.2
+
+make
+make html
+
+make install
+make install-html
+
+cd ..
+rm -rf mpfr-3.1.2
+
+#MPC
+
+tar xf mpc-1.0.2.tar.gz
+
+cd mpc-1.0.2
+
+./configure --prefix=/usr --docdir=/usr/share/doc/mpc-1.0.2
+make
+make html
+
+make install
+make install-html
+
+cd ..
+rm -rf mpc-1.0.2
+
+#gcc
+
+tar xf gcc-4.9.2.tar.bz2
+
+cd gcc-4.9.2
+mkdir -v ../gcc-build
+cd ../gcc-build
+
+
+
+SED=sed                       \
+../gcc-4.9.2/configure        \
+     --prefix=/usr            \
+     --enable-languages=c,c++ \
+     --disable-multilib       \
+     --disable-bootstrap      \
+     --with-system-zlib
+
+make -j8
+
+make -j8 install
+
+ln -sv ../usr/bin/cpp /lib
+ln -sv gcc /usr/bin/cc
+
+echo 'main(){}' > dummy.c
+cc dummy.c -v -Wl,--verbose &> dummy.log
+readelf -l a.out | grep ': /lib'
+
+grep -o '/usr/lib.*/crt[1in].*succeeded' dummy.log
+
+grep -B4 '^ /usr/include' dummy.log
+
+grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
+
+grep "/lib.*/libc.so.6 " dummy.log
+
+grep found dummy.log
+
+read -rsp $'Press any key to continue...\n' -n1 key
+
+rm -v dummy.c a.out dummy.log
+
+mkdir -pv /usr/share/gdb/auto-load/usr/lib
+mv -v /usr/lib/*gdb.py /usr/share/gdb/auto-load/usr/lib
+
+cd ..
+
+rm -rf gcc-4.9.2 gcc-build
+
+
 
