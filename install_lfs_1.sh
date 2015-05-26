@@ -205,7 +205,7 @@ rm -rf binutils-build binutils-2.25
 
 #gcc pass 2
 
-tar xf gcc-4.9.2
+tar xf gcc-4.9.2.tar.bz2
 
 cd gcc-4.9.2
 
