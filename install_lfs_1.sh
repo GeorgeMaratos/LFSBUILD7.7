@@ -102,7 +102,7 @@ cp -rv dest/include/* /tools/include
 
 cd ..
 
-rm -rf linux-3.19.tar.xz
+rm -rf linux-3.19
 
 #glibc
 
