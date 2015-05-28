@@ -309,4 +309,92 @@ cd ..
 rm -rf gcc-4.9.2 gcc-build
 
 
+#bzip
+
+tar xf bzip2-1.0.6.tar.gz
+
+cd bzip2-1.0.6
+
+patch -Np1 -i ../bzip2-1.0.6-install_docs-1.patch
+
+sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+
+sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+
+make -f Makefile-libbz2_so
+make clean
+
+make
+
+make PREFIX=/usr install
+
+cp -v bzip2-shared /bin/bzip2
+cp -av libbz2.so* /lib
+ln -sv ../../lib/libbz2.so.1.0 /usr/lib/libbz2.so
+rm -v /usr/bin/{bunzip2,bzcat,bzip2}
+ln -sv bzip2 /bin/bunzip2
+ln -sv bzip2 /bin/bzcat
+
+cd ..
+
+rm -rf bzip2-1.0.6
+
+#pkg-config
+
+tar xf pkg-config-0.28.tar.gz
+
+cd pkg-config-0.28
+
+./configure --prefix=/usr         \
+            --with-internal-glib  \
+            --disable-host-tool   \
+            --docdir=/usr/share/doc/pkg-config-0.28
+
+make
+make install
+
+cd ..
+rm -rf pkg-config-0.28
+
+#ncurses
+
+tar xf ncurses-5.9.tar.gz
+
+cd ncurses-5.9
+
+./configure --prefix=/usr           \
+            --mandir=/usr/share/man \
+            --with-shared           \
+            --without-debug         \
+            --enable-pc-files       \
+            --enable-widec
+
+make
+make install
+
+mv -v /usr/lib/libncursesw.so.5* /lib
+
+ln -sfv ../../lib/$(readlink /usr/lib/libncursesw.so) /usr/lib/libncursesw.so
+
+for lib in ncurses form panel menu ; do
+    rm -vf                    /usr/lib/lib${lib}.so
+    echo "INPUT(-l${lib}w)" > /usr/lib/lib${lib}.so
+    ln -sfv lib${lib}w.a      /usr/lib/lib${lib}.a
+    ln -sfv ${lib}w.pc        /usr/lib/pkgconfig/${lib}.pc
+done
+
+ln -sfv libncurses++w.a /usr/lib/libncurses++.a
+
+rm -vf                     /usr/lib/libcursesw.so
+echo "INPUT(-lncursesw)" > /usr/lib/libcursesw.so
+ln -sfv libncurses.so      /usr/lib/libcurses.so
+ln -sfv libncursesw.a      /usr/lib/libcursesw.a
+ln -sfv libncurses.a       /usr/lib/libcurses.a
+
+mkdir -v       /usr/share/doc/ncurses-5.9
+cp -v -R doc/* /usr/share/doc/ncurses-5.9
+
+cd ..
+rm -rf ncurses-5.9
+
 
