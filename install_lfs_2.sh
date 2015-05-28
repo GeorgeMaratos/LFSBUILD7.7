@@ -397,4 +397,234 @@ cp -v -R doc/* /usr/share/doc/ncurses-5.9
 cd ..
 rm -rf ncurses-5.9
 
+#attr
 
+tar xf attr-2.4.47.src.tar.gz
+
+cd attr-2.4.47
+
+sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
+
+./configure --prefix=/usr --bindir=/bin
+
+make
+
+make install install-dev install-lib
+chmod -v 755 /usr/lib/libattr.so
+
+mv -v /usr/lib/libattr.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libattr.so) /usr/lib/libattr.so
+
+cd ..
+
+rm -rf attr-2.4.47
+
+#acl
+
+tar xf acl-2.2.52.src.tar.gz
+
+cd acl-2.2.52
+
+sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
+sed -i "s:| sed.*::g" test/{sbits-restore,cp,misc}.test
+sed -i -e "/TABS-1;/a if (x > (TABS-1)) x = (TABS-1);" \
+    libacl/__acl_to_any_text.c
+
+./configure --prefix=/usr \
+            --bindir=/bin \
+            --libexecdir=/usr/lib
+
+make
+
+make install install-dev install-lib
+chmod -v 755 /usr/lib/libacl.so
+mv -v /usr/lib/libacl.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libacl.so) /usr/lib/libacl.so
+
+cd ..
+rm -rf acl-2.2.52
+
+#libcap
+
+tar xf libcap-2.24.tar.xz
+
+cd libcap-2.24
+
+make
+
+make RAISE_SETFCAP=no prefix=/usr install
+chmod -v 755 /usr/lib/libcap.so
+
+mv -v /usr/lib/libcap.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libcap.so) /usr/lib/libcap.so
+
+cd ..
+rm -rf libcap-2.24
+
+#sed
+
+tar xf sed-4.2.2.tar.bz2
+
+cd sed-4.2.2
+
+./configure --prefix=/usr --bindir=/bin --htmldir=/usr/share/doc/sed-4.2.2
+
+make
+make html
+make install
+make -C doc install-html
+
+cd ..
+rm -rf sed-4.2.2
+
+#shadow
+
+tar xf shadow-4.2.1.tar.xz
+
+cd shadow-4.2.1
+
+sed -i 's/groups$(EXEEXT) //' src/Makefile.in
+find man -name Makefile.in -exec sed -i 's/groups\.1 / /' {} \;
+
+sed -i -e 's@#ENCRYPT_METHOD DES@ENCRYPT_METHOD SHA512@' \
+       -e 's@/var/spool/mail@/var/mail@' etc/login.defs
+
+sed -i 's/1000/999/' etc/useradd
+
+./configure --sysconfdir=/etc --with-group-name-max-length=32
+
+make 
+make install
+
+mv -v /usr/bin/passwd /bin
+
+pwconv
+grpconv
+
+passwd root
+
+cd ..
+rm -rf shadow-4.2.1
+
+#psmisc
+tar xf psmisc-22.21.tar.gz
+
+cd psmisc-22.21
+
+./configure --prefix=/usr
+
+make
+
+make install
+
+mv -v /usr/bin/fuser   /bin
+mv -v /usr/bin/killall /bin
+
+cd ..
+
+rm -rf psmisc-22.21
+
+#procps-ng-3.3.10.tar.xz
+
+tar xf procps-ng-3.3.10.tar.xz
+
+cd procps-ng-3.3.10
+
+./configure --prefix=/usr                           \
+            --exec-prefix=                          \
+            --libdir=/usr/lib                       \
+            --docdir=/usr/share/doc/procps-ng-3.3.10 \
+            --disable-static                        \
+            --disable-kill
+
+make
+
+make install
+
+mv -v /usr/bin/pidof /bin
+mv -v /usr/lib/libprocps.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libprocps.so) /usr/lib/libprocps.so
+
+cd ..
+rm -rf procps-ng-3.3.10
+
+#e2fsprogs-1.42.12.tar.gz
+
+tar xf e2fsprogs-1.42.12.tar.gz
+
+cd e2fsprogs-1.42.12
+
+sed -e '/int.*old_desc_blocks/s/int/blk64_t/' \
+    -e '/if (old_desc_blocks/s/super->s_first_meta_bg/desc_blocks/' \
+    -i lib/ext2fs/closefs.c
+
+mkdir -v build
+cd build
+
+LIBS=-L/tools/lib                    \
+CFLAGS=-I/tools/include              \
+PKG_CONFIG_PATH=/tools/lib/pkgconfig \
+../configure --prefix=/usr           \
+             --bindir=/bin           \
+             --with-root-prefix=""   \
+             --enable-elf-shlibs     \
+             --disable-libblkid      \
+             --disable-libuuid       \
+             --disable-uuidd         \
+             --disable-fsck
+
+make
+make install
+
+make install-libs
+chmod -v u+w /usr/lib/{libcom_err,libe2p,libext2fs,libss}.a
+
+gunzip -v /usr/share/info/libext2fs.info.gz
+install-info --dir-file=/usr/share/info/dir /usr/share/info/libext2fs.info
+
+makeinfo -o      doc/com_err.info ../lib/et/com_err.texinfo
+install -v -m644 doc/com_err.info /usr/share/info
+install-info --dir-file=/usr/share/info/dir /usr/share/info/com_err.info
+
+cd ../..
+
+rm -rf e2fsprogs-1.42.12
+
+
+#coreutils
+
+tar xf coreutils-8.23.tar.xz
+
+cd coreutils-8.23
+
+patch -Np1 -i ../coreutils-8.23-i18n-1.patch 
+touch Makefile.in
+
+FORCE_UNSAFE_CONFIGURE=1 ./configure \
+            --prefix=/usr            \
+            --enable-no-install-program=kill,uptime
+
+make
+
+echo "dummy:x:1000:nobody" >> /etc/group
+
+chown -Rv nobody . 
+
+sed -i '/dummy/d' /etc/group
+
+make install
+
+mv -v /usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo} /bin
+mv -v /usr/bin/{false,ln,ls,mkdir,mknod,mv,pwd,rm} /bin
+mv -v /usr/bin/{rmdir,stty,sync,true,uname} /bin
+mv -v /usr/bin/chroot /usr/sbin
+mv -v /usr/share/man/man1/chroot.1 /usr/share/man/man8/chroot.8
+sed -i s/\"1\"/\"8\"/1 /usr/share/man/man8/chroot.8
+
+mv -v /usr/bin/{head,sleep,nice,test,[} /bin
+
+cd ..
+
+rm -rf coreutils-8.23
+
+#iana
