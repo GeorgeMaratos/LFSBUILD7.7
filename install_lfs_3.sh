@@ -319,3 +319,346 @@ rm -rf less-458
 
 
 #gzip
+
+tar xf gzip-1.6.tar.xz
+
+cd gzip-1.6
+
+./configure --prefix=/usr --bindir=/bin
+make
+make install
+mv -v /bin/{gzexe,uncompress,zcmp,zdiff,zegrep} /usr/bin
+mv -v /bin/{zfgrep,zforce,zgrep,zless,zmore,znew} /usr/bin
+
+cd ..
+rm -rf gzip-1.6
+
+
+
+#iproute2-3.19.0.tar.xz
+
+tar xf iproute2-3.19.0.tar.xz
+
+cd iproute2-3.19.0
+
+sed -i '/^TARGETS/s@arpd@@g' misc/Makefile
+sed -i /ARPD/d Makefile
+sed -i 's/arpd.8//' man/man8/Makefile
+make
+make DOCDIR=/usr/share/doc/iproute2-3.19.0 install
+
+cd ..
+rm -rf iproute2-3.19.0
+
+
+#kbd-2.0.2.tar.gz
+
+tar xf kbd-2.0.2.tar.gz
+
+cd kbd-2.0.2
+
+patch -Np1 -i ../kbd-2.0.2-backspace-1.patch
+
+sed -i 's/\(RESIZECONS_PROGS=\)yes/\1no/g' configure
+sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+
+PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr --disable-vlock
+
+make
+make install
+
+mkdir -v       /usr/share/doc/kbd-2.0.2
+cp -R -v docs/doc/* /usr/share/doc/kbd-2.0.2
+
+cd ..
+rm -rf kbd-2.0.2
+
+#kmod-19.tar.xz
+
+tar xf kmod-19.tar.xz
+
+cd kmod-19
+
+./configure --prefix=/usr          \
+            --bindir=/bin          \
+            --sysconfdir=/etc      \
+            --with-rootlibdir=/lib \
+            --with-xz              \
+            --with-zlib
+
+make
+
+make install
+
+for target in depmod insmod lsmod modinfo modprobe rmmod; do
+  ln -sv ../bin/kmod /sbin/$target
+done
+
+ln -sv kmod /bin/lsmod
+
+
+cd ..
+rm -rf kmod-19
+
+
+#libpipeline-1.4.0.tar.gz
+
+tar xf libpipeline-1.4.0.tar.gz
+
+cd libpipeline-1.4.0
+
+PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr
+
+make
+make install
+
+cd ..
+rm -rf libpipeline-1.4.0
+
+
+#make-4.1.tar.bz2
+
+tar xf make-4.1.tar.bz2
+
+cd make-4.1
+
+./configure --prefix=/usr
+
+make
+make install
+
+cd ..
+rm -rf make-4.1
+
+
+
+#patch-2.7.4.tar.xz
+
+tar xf patch-2.7.4.tar.xz
+
+cd patch-2.7.4
+
+./configure --prefix=/usr
+make
+make install
+
+cd ..
+rm -rf patch-2.7.4
+
+
+
+#sysklogd-1.5.1.tar.gz
+
+tar xf sysklogd-1.5.1.tar.gz
+
+cd sysklogd-1.5.1
+
+sed -i '/Error loading kernel symbols/{n;n;d}' ksym_mod.c
+make
+make BINDIR=/sbin install
+
+
+cat > /etc/syslog.conf << "EOF"
+# Begin /etc/syslog.conf
+
+auth,authpriv.* -/var/log/auth.log
+*.*;auth,authpriv.none -/var/log/sys.log
+daemon.* -/var/log/daemon.log
+kern.* -/var/log/kern.log
+mail.* -/var/log/mail.log
+user.* -/var/log/user.log
+*.emerg *
+
+# End /etc/syslog.conf
+EOF
+
+cd ..
+rm -rf sysklogd-1.5.1
+
+
+
+#sysvinit-2.88dsf.tar.bz2
+
+tar xf sysvinit-2.88dsf.tar.bz2
+
+cd sysvinit-2.88dsf
+
+patch -Np1 -i ../sysvinit-2.88dsf-consolidated-1.patch
+make -C src
+make -C src install
+
+cd ..
+rm -rf sysvinit-2.88dsf
+
+
+
+#tar-1.28.tar.xz
+
+tar xf tar-1.28.tar.xz
+
+cd tar-1.28
+
+FORCE_UNSAFE_CONFIGURE=1  \
+./configure --prefix=/usr \
+            --bindir=/bin
+
+
+make
+make install
+make -C doc install-html docdir=/usr/share/doc/tar-1.28
+
+cd ..
+rm -rf tar-1.28
+
+
+
+#texinfo-5.2.tar.xz
+
+tar xf texinfo-5.2.tar.xz
+
+cd texinfo-5.2
+
+./configure --prefix=/usr
+make
+make install
+
+make TEXMF=/usr/share/texmf install-tex
+
+cd ..
+rm -rf texinfo-5.2
+
+
+
+#eudev-2.1.1.tar.gz
+tar xf eudev-2.1.1.tar.gz
+
+cd eudev-2.1.1
+
+sed -r -i 's|/usr(/bin/test)|\1|' test/udev-test.pl
+BLKID_CFLAGS=-I/tools/include       \
+BLKID_LIBS='-L/tools/lib -lblkid'   \
+./configure --prefix=/usr           \
+            --bindir=/sbin          \
+            --sbindir=/sbin         \
+            --libdir=/usr/lib       \
+            --sysconfdir=/etc       \
+            --libexecdir=/lib       \
+            --with-rootprefix=      \
+            --with-rootlibdir=/lib  \
+            --enable-split-usr      \
+            --enable-libkmod        \
+            --enable-rule_generator \
+            --enable-keymap         \
+            --disable-introspection \
+            --disable-gudev         \
+            --disable-gtk-doc-html
+
+make
+mkdir -pv /lib/udev/rules.d
+mkdir -pv /etc/udev/rules.d
+
+make install
+
+tar -xvf ../eudev-2.1.1-manpages.tar.bz2 -C /usr/share
+
+
+
+tar -xvf ../udev-lfs-20140408.tar.bz2
+make -f udev-lfs-20140408/Makefile.lfs install
+
+udevadm hwdb --update
+
+
+cd ..
+rm -rf eudev-2.1.1
+
+
+#util-linux-2.26.tar.xz
+
+tar xf util-linux-2.26.tar.xz
+
+cd util-linux-2.26
+
+mkdir -pv /var/lib/hwclock
+
+./configure ADJTIME_PATH=/var/lib/hwclock/adjtime     \
+            --docdir=/usr/share/doc/util-linux-2.26 \
+            --disable-chfn-chsh  \
+            --disable-login      \
+            --disable-nologin    \
+            --disable-su         \
+            --disable-setpriv    \
+            --disable-runuser    \
+            --disable-pylibmount \
+            --without-python     \
+            --without-systemd    \
+            --without-systemdsystemunitdir
+
+make
+
+make install
+
+cd ..
+rm -rf util-linux-2.26
+
+#man-db-2.7.1.tar.xz
+
+tar xf man-db-2.7.1.tar.xz
+
+cd man-db-2.7.1
+
+./configure --prefix=/usr                          \
+            --docdir=/usr/share/doc/man-db-2.7.1 \
+            --sysconfdir=/etc                      \
+            --disable-setuid                       \
+            --with-browser=/usr/bin/lynx           \
+            --with-vgrind=/usr/bin/vgrind          \
+            --with-grap=/usr/bin/grap
+
+make
+
+make install
+
+cd ..
+rm -rf man-db-2.7.1
+
+
+#vim 
+
+tar xf vim-7.4.tar.bz2
+
+cd vim-7.4
+
+echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+
+./configure --prefix=/usr
+
+make
+
+make install
+
+ln -sv vim /usr/bin/vi
+for L in  /usr/share/man/{,*/}man1/vim.1; do
+    ln -sv vim.1 $(dirname $L)/vi.1
+done
+
+ln -sv ../vim/vim74/doc /usr/share/doc/vim-7.4
+
+cat > /etc/vimrc << "EOF"
+" Begin /etc/vimrc
+
+set nocompatible
+set backspace=2
+syntax on
+if (&term == "iterm") || (&term == "putty")
+  set background=dark
+endif
+
+" End /etc/vimrc
+EOF
+
+cd ..
+rm -rf vim-7.4
+
+
+
