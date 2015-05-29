@@ -628,3 +628,128 @@ cd ..
 rm -rf coreutils-8.23
 
 #iana
+
+tar xf iana-etc-2.30.tar.bz2
+
+cd iana-etc-2.30
+
+make
+make install
+
+cd ..
+
+rm -rf iana-etc-2.30
+
+# m4-1.4.17.tar.xz
+
+tar xf m4-1.4.17.tar.xz
+
+cd m4-1.4.17
+
+./configure --prefix=/usr
+
+make 
+make install
+
+cd ..
+
+rm -rf m4-1.4.17
+
+
+#flex
+
+tar xf flex-2.5.39.tar.bz2
+
+cd flex-2.5.39
+
+sed -i -e '/test-bison/d' tests/Makefile.in
+
+./configure --prefix=/usr --docdir=/usr/share/doc/flex-2.5.39
+
+make
+make install
+
+ln -sv flex /usr/bin/lex
+
+cd ..
+
+rm -rf flex-2.5.39
+
+#bison
+
+tar xf bison-3.0.4.tar.xz
+
+cd bison-3.0.4
+
+./configure --prefix=/usr --docdir=/usr/share/doc/bison-3.0.4
+
+make -j8
+make install
+
+cd ..
+
+rm -rf bison-3.0.4
+
+#grep-2.21.tar.xz
+
+tar xf grep-2.21.tar.xz
+
+cd grep-2.21
+
+sed -i -e '/tp++/a  if (ep <= tp) break;' src/kwset.c
+
+./configure --prefix=/usr --bindir=/bin
+
+make
+
+make install
+
+cd ..
+
+rm -rf grep-2.21
+
+#readline-6.3.tar.gz
+
+tar xf readline-6.3.tar.gz
+
+cd readline-6.3
+
+patch -Np1 -i ../readline-6.3-upstream_fixes-3.patch
+sed -i '/MV.*old/d' Makefile.in
+sed -i '/{OLDSUFF}/c:' support/shlib-install
+./configure --prefix=/usr --docdir=/usr/share/doc/readline-6.3
+make SHLIB_LIBS=-lncurses
+
+make SHLIB_LIBS=-lncurses install
+mv -v /usr/lib/lib{readline,history}.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libreadline.so) /usr/lib/libreadline.so
+ln -sfv ../../lib/$(readlink /usr/lib/libhistory.so ) /usr/lib/libhistory.so
+
+install -v -m644 doc/*.{ps,pdf,html,dvi} /usr/share/doc/readline-6.3
+
+cd ..
+rm -rf readline-6.3
+
+#bash
+
+tar xf bash-4.3.30.tar.gz
+
+cd bash-4.3.30
+
+patch -Np1 -i ../bash-4.3.30-upstream_fixes-1.patch
+
+
+./configure --prefix=/usr                    \
+            --bindir=/bin                    \
+            --docdir=/usr/share/doc/bash-4.3.30 \
+            --without-bash-malloc            \
+            --with-installed-readline
+
+make -j8
+
+make install
+
+cd ..
+rm -rf bash-4.3.30
+
+exec /bin/bash --login +h
