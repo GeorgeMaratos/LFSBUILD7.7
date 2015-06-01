@@ -210,7 +210,7 @@ rm -rf binutils-2.25 binutils-build
 
 tar xf gmp-6.0.0a.tar.xz
 
-cd gmp-6.0.0a
+cd gmp-6.0.0
 
 ABI=32 ./configure --prefix=/usr \
             --enable-cxx  \
@@ -223,7 +223,7 @@ make -j8 install
 make -j8 install-html
 
 cd ..
-rm -rf gmp-6.0.0a
+rm -rf gmp-6.0.0
 
 #mpfr
 
