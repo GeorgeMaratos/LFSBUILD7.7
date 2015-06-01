@@ -27,6 +27,9 @@ rm -rf linux-3.19
 #man pages
 
 tar xf man-pages-3.79.tar.xz
+
+cd man-pages-3.79
+
 make -j8 install
 
 cd ..
