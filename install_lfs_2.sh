@@ -283,8 +283,14 @@ make -j8
 
 make -j8 install
 
+
+
 ln -sv ../usr/bin/cpp /lib
 ln -sv gcc /usr/bin/cc
+
+install -v -dm755 /usr/lib/bfd-plugins
+ln -sfv ../../libexec/gcc/$(gcc -dumpmachine)/4.9.2/liblto_plugin.so /usr/lib/bfd-plugins/
+
 
 echo 'main(){}' > dummy.c
 cc dummy.c -v -Wl,--verbose &> dummy.log
@@ -624,7 +630,7 @@ mv -v /usr/bin/chroot /usr/sbin
 mv -v /usr/share/man/man1/chroot.1 /usr/share/man/man8/chroot.8
 sed -i s/\"1\"/\"8\"/1 /usr/share/man/man8/chroot.8
 
-mv -v /usr/bin/{head,sleep,nice,test,[} /bin
+mv -v /usr/bin/{head,sleep,nice,test,[} /bin 
 
 cd ..
 
