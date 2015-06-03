@@ -2,637 +2,234 @@
 
 set -e
 
-#third compilation step after execing the new shell
 
-#bc
+echo 'main(){}' > dummy.c
+cc dummy.c -v -Wl,--verbose &> dummy.log
+readelf -l a.out | grep ': /lib'
 
-tar xf bc-1.06.95.tar.bz2
+grep -o '/usr/lib.*/crt[1in].*succeeded' dummy.log
 
-cd bc-1.06.95
+grep -B4 '^ /usr/include' dummy.log
 
-patch -Np1 -i ../bc-1.06.95-memory_leak-1.patch
+grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
+
+grep "/lib.*/libc.so.6 " dummy.log
+
+grep found dummy.log
+
+read -rsp $'Press any key to continue...\n' -n1 key
+
+rm -v dummy.c a.out dummy.log
+
+mkdir -pv /usr/share/gdb/auto-load/usr/lib
+mv -v /usr/lib/*gdb.py /usr/share/gdb/auto-load/usr/lib
+
+cd ..
+
+rm -rf gcc-4.9.2 gcc-build
+
+
+#bzip
+
+tar xf bzip2-1.0.6.tar.gz
+
+cd bzip2-1.0.6
+
+patch -Np1 -i ../bzip2-1.0.6-install_docs-1.patch
+
+sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+
+sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+
+make -f Makefile-libbz2_so
+make clean
+
+make
+
+make PREFIX=/usr install
+
+cp -v bzip2-shared /bin/bzip2
+cp -av libbz2.so* /lib
+ln -sv ../../lib/libbz2.so.1.0 /usr/lib/libbz2.so
+rm -v /usr/bin/{bunzip2,bzcat,bzip2}
+ln -sv bzip2 /bin/bunzip2
+ln -sv bzip2 /bin/bzcat
+
+cd ..
+
+rm -rf bzip2-1.0.6
+
+#pkg-config
+
+tar xf pkg-config-0.28.tar.gz
+
+cd pkg-config-0.28
+
+./configure --prefix=/usr         \
+            --with-internal-glib  \
+            --disable-host-tool   \
+            --docdir=/usr/share/doc/pkg-config-0.28
+
+make
+make install
+
+cd ..
+rm -rf pkg-config-0.28
+
+#ncurses
+
+tar xf ncurses-5.9.tar.gz
+
+cd ncurses-5.9
 
 ./configure --prefix=/usr           \
-            --with-readline         \
             --mandir=/usr/share/man \
-            --infodir=/usr/share/info
+            --with-shared           \
+            --without-debug         \
+            --enable-pc-files       \
+            --enable-widec
 
 make
-
 make install
 
-cd ..
-rm -rf bc-1.06.95
+mv -v /usr/lib/libncursesw.so.5* /lib
 
-#libtool
+ln -sfv ../../lib/$(readlink /usr/lib/libncursesw.so) /usr/lib/libncursesw.so
 
-tar xf libtool-2.4.6.tar.xz
+for lib in ncurses form panel menu ; do
+    rm -vf                    /usr/lib/lib${lib}.so
+    echo "INPUT(-l${lib}w)" > /usr/lib/lib${lib}.so
+    ln -sfv lib${lib}w.a      /usr/lib/lib${lib}.a
+    ln -sfv ${lib}w.pc        /usr/lib/pkgconfig/${lib}.pc
+done
 
-cd libtool-2.4.6
+ln -sfv libncurses++w.a /usr/lib/libncurses++.a
 
-./configure --prefix=/usr
+rm -vf                     /usr/lib/libcursesw.so
+echo "INPUT(-lncursesw)" > /usr/lib/libcursesw.so
+ln -sfv libncurses.so      /usr/lib/libcurses.so
+ln -sfv libncursesw.a      /usr/lib/libcursesw.a
+ln -sfv libncurses.a       /usr/lib/libcurses.a
 
-make -j8
-
-make install
-
-cd ..
-
-rm -rf libtool-2.4.6
-
-
-#gdbm-1.11.tar.gz
-
-tar xf gdbm-1.11.tar.gz
-
-cd gdbm-1.11
-
-./configure --prefix=/usr --enable-libgdbm-compat
-make
-make install
+mkdir -v       /usr/share/doc/ncurses-5.9
+cp -v -R doc/* /usr/share/doc/ncurses-5.9
 
 cd ..
-rm -rf gdbm-1.11
+rm -rf ncurses-5.9
 
-#expat-2.1.0.tar.gz
+#attr
 
-tar xf expat-2.1.0.tar.gz
+tar xf attr-2.4.47.src.tar.gz
 
-cd expat-2.1.0
+cd attr-2.4.47
 
-./configure --prefix=/usr
-make
-make install
-
-install -v -dm755 /usr/share/doc/expat-2.1.0
-install -v -m644 doc/*.{html,png,css} /usr/share/doc/expat-2.1.0
-
-cd ..
-rm -rf expat-2.1.0
-
-
-#ineutils
-
-tar xf inetutils-1.9.2.tar.gz
-
-cd inetutils-1.9.2
-
-echo '#define PATH_PROCNET_DEV "/proc/net/dev"' >> ifconfig/system/linux.h 
-
-./configure --prefix=/usr  \
-            --localstatedir=/var   \
-            --disable-logger       \
-            --disable-whois        \
-            --disable-servers
-
-make
-
-make install
-
-mv -v /usr/bin/{hostname,ping,ping6,traceroute} /bin
-mv -v /usr/bin/ifconfig /sbin
-
-cd ..
-rm -rf inetutils-1.9.2
-
-
-
-#perl
-
-tar xf perl-5.20.2.tar.bz2
-
-cd perl-5.20.2
-
-echo "127.0.0.1 localhost $(hostname)" > /etc/hosts
-export BUILD_ZLIB=False
-export BUILD_BZIP2=0
-
-sh Configure -des -Dprefix=/usr                 \
-                  -Dvendorprefix=/usr           \
-                  -Dman1dir=/usr/share/man/man1 \
-                  -Dman3dir=/usr/share/man/man3 \
-                  -Dpager="/usr/bin/less -isR"  \
-                  -Duseshrplib
-
-make
-
-make install
-
-unset BUILD_ZLIB BUILD_BZIP2
-
-cd ..
-rm -rf perl-5.20.2
-
-
-#XML-Parser-2.44.tar.gz
-
-tar xf XML-Parser-2.44.tar.gz
-
-cd XML-Parser-2.44
-
-perl Makefile.PL
-make
-make install
-
-cd ..
-rm -rf XML-Parser-2.44
-
-
-
-#autoconf-2.69.tar.xz
-
-tar xf autoconf-2.69.tar.xz
-
-cd autoconf-2.69
-
-./configure --prefix=/usr
-make
-make install
-
-cd ..
-rm -rf autoconf-2.69
-
-#automake-1.15.tar.xz
-
-tar xf automake-1.15.tar.xz
-
-cd automake-1.15
-
-./configure --prefix=/usr --docdir=/usr/share/doc/automake-1.15
-make
-make install
-
-cd ..
-rm -rf automake-1.15
-
-#diffutils
-
-tar xf diffutils-3.3.tar.xz
-
-cd diffutils-3.3
-
-sed -i 's:= @mkdir_p@:= /bin/mkdir -p:' po/Makefile.in.in
-./configure --prefix=/usr
-make
-make install
-
-cd ..
-rm -rf diffutils-3.3
-
-#gawk-4.1.1.tar.xz
-
-tar xf gawk-4.1.1.tar.xz
-
-cd gawk-4.1.1
-
-./configure --prefix=/usr
-make
-make install
-
-mkdir -v /usr/share/doc/gawk-4.1.1
-cp    -v doc/{awkforai.txt,*.{eps,pdf,jpg}} /usr/share/doc/gawk-4.1.1
-
-cd ..
-rm -rf gawk-4.1.1
-
-#findutils-4.4.2.tar.gz
-
-tar xf findutils-4.4.2.tar.gz
-
-cd findutils-4.4.2
-
-./configure --prefix=/usr --localstatedir=/var/lib/locate
-make
-make install
-
-mv -v /usr/bin/find /bin
-sed -i 's|find:=${BINDIR}|find:=/bin|' /usr/bin/updatedb
-
-cd ..
-rm -rf findutils-4.4.2
-
-#gettext
-
-tar xf gettext-0.19.4.tar.xz
-
-cd gettext-0.19.4
-
-./configure --prefix=/usr --docdir=/usr/share/doc/gettext-0.19.4
-
-make -j8
-
-make install
-
-cd ..
-rm -rf gettext-0.19.4
-
-#intltool-0.50.2.tar.gz
-
-tar xf intltool-0.50.2.tar.gz
-
-cd intltool-0.50.2
-
-./configure --prefix=/usr
-make
-make install
-
-install -v -Dm644 doc/I18N-HOWTO /usr/share/doc/intltool-0.50.2/I18N-HOWTO
-
-cd ..
-rm -rf intltool-0.50.2
-
-#gperf
-
-tar xf gperf-3.0.4.tar.gz
-
-cd gperf-3.0.4
-
-./configure --prefix=/usr --docdir=/usr/share/doc/gperf-3.0.4
-make
-make install
-
-cd ..
-rm -rf gperf-3.0.4
-
-#groff
-
-tar xf groff-1.22.3.tar.gz
-
-cd groff-1.22.3
-
-PAGE=letter ./configure --prefix=/usr
-
-make
-make install
-
-cd ..
-rm -rf groff-1.22.3
-
-#xz
-
-tar xf xz-5.2.0.tar.xz
-
-cd xz-5.2.0
-
-./configure --prefix=/usr --docdir=/usr/share/doc/xz-5.2.0
-
-make
-make install
-mv -v   /usr/bin/{lzma,unlzma,lzcat,xz,unxz,xzcat} /bin
-mv -v /usr/lib/liblzma.so.* /lib
-ln -svf ../../lib/$(readlink /usr/lib/liblzma.so) /usr/lib/liblzma.so
-
-cd ..
-rm -rf xz-5.2.0
-
-
-#grub-2.02~beta2.tar.xz
-
-tar xf grub-2.02~beta2.tar.xz
-
-cd grub-2.02~beta2
-
-./configure --prefix=/usr          \
-            --sbindir=/sbin        \
-            --sysconfdir=/etc      \
-            --disable-grub-emu-usb \
-            --disable-efiemu       \
-            --disable-werror
-
-make
-
-make install
-
-cd ..
-rm -rf grub-2.02~beta2
-
-
-#less
-
-tar xf less-458.tar.gz
-
-cd less-458
-
-./configure --prefix=/usr --sysconfdir=/etc
-make
-make install
-
-cd ..
-rm -rf less-458
-
-
-#gzip
-
-tar xf gzip-1.6.tar.xz
-
-cd gzip-1.6
+sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
 
 ./configure --prefix=/usr --bindir=/bin
-make
-make install
-mv -v /bin/{gzexe,uncompress,zcmp,zdiff,zegrep} /usr/bin
-mv -v /bin/{zfgrep,zforce,zgrep,zless,zmore,znew} /usr/bin
-
-cd ..
-rm -rf gzip-1.6
-
-
-
-#iproute2-3.19.0.tar.xz
-
-tar xf iproute2-3.19.0.tar.xz
-
-cd iproute2-3.19.0
-
-sed -i '/^TARGETS/s@arpd@@g' misc/Makefile
-sed -i /ARPD/d Makefile
-sed -i 's/arpd.8//' man/man8/Makefile
-make
-make DOCDIR=/usr/share/doc/iproute2-3.19.0 install
-
-cd ..
-rm -rf iproute2-3.19.0
-
-
-#kbd-2.0.2.tar.gz
-
-tar xf kbd-2.0.2.tar.gz
-
-cd kbd-2.0.2
-
-patch -Np1 -i ../kbd-2.0.2-backspace-1.patch
-
-sed -i 's/\(RESIZECONS_PROGS=\)yes/\1no/g' configure
-sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
-
-PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr --disable-vlock
-
-make
-make install
-
-mkdir -v       /usr/share/doc/kbd-2.0.2
-cp -R -v docs/doc/* /usr/share/doc/kbd-2.0.2
-
-cd ..
-rm -rf kbd-2.0.2
-
-#kmod-19.tar.xz
-
-tar xf kmod-19.tar.xz
-
-cd kmod-19
-
-./configure --prefix=/usr          \
-            --bindir=/bin          \
-            --sysconfdir=/etc      \
-            --with-rootlibdir=/lib \
-            --with-xz              \
-            --with-zlib
 
 make
 
-make install
+make install install-dev install-lib
+chmod -v 755 /usr/lib/libattr.so
 
-for target in depmod insmod lsmod modinfo modprobe rmmod; do
-  ln -sv ../bin/kmod /sbin/$target
-done
-
-ln -sv kmod /bin/lsmod
-
+mv -v /usr/lib/libattr.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libattr.so) /usr/lib/libattr.so
 
 cd ..
-rm -rf kmod-19
 
+rm -rf attr-2.4.47
 
-#libpipeline-1.4.0.tar.gz
+#acl
 
-tar xf libpipeline-1.4.0.tar.gz
+tar xf acl-2.2.52.src.tar.gz
 
-cd libpipeline-1.4.0
+cd acl-2.2.52
 
-PKG_CONFIG_PATH=/tools/lib/pkgconfig ./configure --prefix=/usr
+sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in
+sed -i "s:| sed.*::g" test/{sbits-restore,cp,misc}.test
+sed -i -e "/TABS-1;/a if (x > (TABS-1)) x = (TABS-1);" \
+    libacl/__acl_to_any_text.c
 
-make
-make install
-
-cd ..
-rm -rf libpipeline-1.4.0
-
-
-#make-4.1.tar.bz2
-
-tar xf make-4.1.tar.bz2
-
-cd make-4.1
-
-./configure --prefix=/usr
-
-make
-make install
-
-cd ..
-rm -rf make-4.1
-
-
-
-#patch-2.7.4.tar.xz
-
-tar xf patch-2.7.4.tar.xz
-
-cd patch-2.7.4
-
-./configure --prefix=/usr
-make
-make install
-
-cd ..
-rm -rf patch-2.7.4
-
-
-
-#sysklogd-1.5.1.tar.gz
-
-tar xf sysklogd-1.5.1.tar.gz
-
-cd sysklogd-1.5.1
-
-sed -i '/Error loading kernel symbols/{n;n;d}' ksym_mod.c
-make
-make BINDIR=/sbin install
-
-
-cat > /etc/syslog.conf << "EOF"
-# Begin /etc/syslog.conf
-
-auth,authpriv.* -/var/log/auth.log
-*.*;auth,authpriv.none -/var/log/sys.log
-daemon.* -/var/log/daemon.log
-kern.* -/var/log/kern.log
-mail.* -/var/log/mail.log
-user.* -/var/log/user.log
-*.emerg *
-
-# End /etc/syslog.conf
-EOF
-
-cd ..
-rm -rf sysklogd-1.5.1
-
-
-
-#sysvinit-2.88dsf.tar.bz2
-
-tar xf sysvinit-2.88dsf.tar.bz2
-
-cd sysvinit-2.88dsf
-
-patch -Np1 -i ../sysvinit-2.88dsf-consolidated-1.patch
-make -C src
-make -C src install
-
-cd ..
-rm -rf sysvinit-2.88dsf
-
-
-
-#tar-1.28.tar.xz
-
-tar xf tar-1.28.tar.xz
-
-cd tar-1.28
-
-FORCE_UNSAFE_CONFIGURE=1  \
 ./configure --prefix=/usr \
-            --bindir=/bin
-
-
-make
-make install
-make -C doc install-html docdir=/usr/share/doc/tar-1.28
-
-cd ..
-rm -rf tar-1.28
-
-
-
-#texinfo-5.2.tar.xz
-
-tar xf texinfo-5.2.tar.xz
-
-cd texinfo-5.2
-
-./configure --prefix=/usr
-make
-make install
-
-make TEXMF=/usr/share/texmf install-tex
-
-cd ..
-rm -rf texinfo-5.2
-
-
-
-#eudev-2.1.1.tar.gz
-tar xf eudev-2.1.1.tar.gz
-
-cd eudev-2.1.1
-
-sed -r -i 's|/usr(/bin/test)|\1|' test/udev-test.pl
-BLKID_CFLAGS=-I/tools/include       \
-BLKID_LIBS='-L/tools/lib -lblkid'   \
-./configure --prefix=/usr           \
-            --bindir=/sbin          \
-            --sbindir=/sbin         \
-            --libdir=/usr/lib       \
-            --sysconfdir=/etc       \
-            --libexecdir=/lib       \
-            --with-rootprefix=      \
-            --with-rootlibdir=/lib  \
-            --enable-split-usr      \
-            --enable-libkmod        \
-            --enable-rule_generator \
-            --enable-keymap         \
-            --disable-introspection \
-            --disable-gudev         \
-            --disable-gtk-doc-html
-
-make
-mkdir -pv /lib/udev/rules.d
-mkdir -pv /etc/udev/rules.d
-
-make install
-
-tar -xvf ../eudev-2.1.1-manpages.tar.bz2 -C /usr/share
-
-
-
-tar -xvf ../udev-lfs-20140408.tar.bz2
-make -f udev-lfs-20140408/Makefile.lfs install
-
-udevadm hwdb --update
-
-
-cd ..
-rm -rf eudev-2.1.1
-
-
-#util-linux-2.26.tar.xz
-
-tar xf util-linux-2.26.tar.xz
-
-cd util-linux-2.26
-
-mkdir -pv /var/lib/hwclock
-
-./configure ADJTIME_PATH=/var/lib/hwclock/adjtime     \
-            --docdir=/usr/share/doc/util-linux-2.26 \
-            --disable-chfn-chsh  \
-            --disable-login      \
-            --disable-nologin    \
-            --disable-su         \
-            --disable-setpriv    \
-            --disable-runuser    \
-            --disable-pylibmount \
-            --without-python     \
-            --without-systemd    \
-            --without-systemdsystemunitdir
+            --bindir=/bin \
+            --libexecdir=/usr/lib
 
 make
 
-make install
+make install install-dev install-lib
+chmod -v 755 /usr/lib/libacl.so
+mv -v /usr/lib/libacl.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libacl.so) /usr/lib/libacl.so
 
 cd ..
-rm -rf util-linux-2.26
+rm -rf acl-2.2.52
 
-#man-db-2.7.1.tar.xz
+#libcap
 
-tar xf man-db-2.7.1.tar.xz
+tar xf libcap-2.24.tar.xz
 
-cd man-db-2.7.1
-
-./configure --prefix=/usr                          \
-            --docdir=/usr/share/doc/man-db-2.7.1 \
-            --sysconfdir=/etc                      \
-            --disable-setuid                       \
-            --with-browser=/usr/bin/lynx           \
-            --with-vgrind=/usr/bin/vgrind          \
-            --with-grap=/usr/bin/grap
+cd libcap-2.24
 
 make
 
-make install
+make RAISE_SETFCAP=no prefix=/usr install
+chmod -v 755 /usr/lib/libcap.so
+
+mv -v /usr/lib/libcap.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libcap.so) /usr/lib/libcap.so
 
 cd ..
-rm -rf man-db-2.7.1
+rm -rf libcap-2.24
 
+#sed
 
-#vim 
+tar xf sed-4.2.2.tar.bz2
 
-tar xf vim-7.4.tar.bz2
+cd sed-4.2.2
 
-cd vim74
+./configure --prefix=/usr --bindir=/bin --htmldir=/usr/share/doc/sed-4.2.2
 
-echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+make
+make html
+make install
+make -C doc install-html
+
+cd ..
+rm -rf sed-4.2.2
+
+#shadow
+
+tar xf shadow-4.2.1.tar.xz
+
+cd shadow-4.2.1
+
+sed -i 's/groups$(EXEEXT) //' src/Makefile.in
+find man -name Makefile.in -exec sed -i 's/groups\.1 / /' {} \;
+
+sed -i -e 's@#ENCRYPT_METHOD DES@ENCRYPT_METHOD SHA512@' \
+       -e 's@/var/spool/mail@/var/mail@' etc/login.defs
+
+sed -i 's/1000/999/' etc/useradd
+
+./configure --sysconfdir=/etc --with-group-name-max-length=32
+
+make 
+make install
+
+mv -v /usr/bin/passwd /bin
+
+pwconv
+grpconv
+
+passwd root
+
+cd ..
+rm -rf shadow-4.2.1
+
+#psmisc
+tar xf psmisc-22.21.tar.gz
+
+cd psmisc-22.21
 
 ./configure --prefix=/usr
 
@@ -640,27 +237,239 @@ make
 
 make install
 
-ln -sv vim /usr/bin/vi
-for L in  /usr/share/man/{,*/}man1/vim.1; do
-    ln -sv vim.1 $(dirname $L)/vi.1
-done
-
-
-cat > /etc/vimrc << "EOF"
-" Begin /etc/vimrc
-
-set nocompatible
-set backspace=2
-syntax on
-if (&term == "iterm") || (&term == "putty")
-  set background=dark
-endif
-
-" End /etc/vimrc
-EOF
+mv -v /usr/bin/fuser   /bin
+mv -v /usr/bin/killall /bin
 
 cd ..
-rm -rf vim74
+
+rm -rf psmisc-22.21
+
+#procps-ng-3.3.10.tar.xz
+
+tar xf procps-ng-3.3.10.tar.xz
+
+cd procps-ng-3.3.10
+
+./configure --prefix=/usr                           \
+            --exec-prefix=                          \
+            --libdir=/usr/lib                       \
+            --docdir=/usr/share/doc/procps-ng-3.3.10 \
+            --disable-static                        \
+            --disable-kill
+
+make
+
+make install
+
+mv -v /usr/bin/pidof /bin
+mv -v /usr/lib/libprocps.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libprocps.so) /usr/lib/libprocps.so
+
+cd ..
+rm -rf procps-ng-3.3.10
+
+#e2fsprogs-1.42.12.tar.gz
+
+tar xf e2fsprogs-1.42.12.tar.gz
+
+cd e2fsprogs-1.42.12
+
+sed -e '/int.*old_desc_blocks/s/int/blk64_t/' \
+    -e '/if (old_desc_blocks/s/super->s_first_meta_bg/desc_blocks/' \
+    -i lib/ext2fs/closefs.c
+
+mkdir -v build
+cd build
+
+LIBS=-L/tools/lib                    \
+CFLAGS=-I/tools/include              \
+PKG_CONFIG_PATH=/tools/lib/pkgconfig \
+../configure --prefix=/usr           \
+             --bindir=/bin           \
+             --with-root-prefix=""   \
+             --enable-elf-shlibs     \
+             --disable-libblkid      \
+             --disable-libuuid       \
+             --disable-uuidd         \
+             --disable-fsck
+
+make
+make install
+
+make install-libs
+chmod -v u+w /usr/lib/{libcom_err,libe2p,libext2fs,libss}.a
+
+gunzip -v /usr/share/info/libext2fs.info.gz
+install-info --dir-file=/usr/share/info/dir /usr/share/info/libext2fs.info
+
+makeinfo -o      doc/com_err.info ../lib/et/com_err.texinfo
+install -v -m644 doc/com_err.info /usr/share/info
+install-info --dir-file=/usr/share/info/dir /usr/share/info/com_err.info
+
+cd ../..
+
+rm -rf e2fsprogs-1.42.12
 
 
+#coreutils
 
+tar xf coreutils-8.23.tar.xz
+
+cd coreutils-8.23
+
+patch -Np1 -i ../coreutils-8.23-i18n-1.patch 
+touch Makefile.in
+
+FORCE_UNSAFE_CONFIGURE=1 ./configure \
+            --prefix=/usr            \
+            --enable-no-install-program=kill,uptime
+
+make
+
+echo "dummy:x:1000:nobody" >> /etc/group
+
+chown -Rv nobody . 
+
+sed -i '/dummy/d' /etc/group
+
+make install
+
+mv -v /usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo} /bin
+mv -v /usr/bin/{false,ln,ls,mkdir,mknod,mv,pwd,rm} /bin
+mv -v /usr/bin/{rmdir,stty,sync,true,uname} /bin
+mv -v /usr/bin/chroot /usr/sbin
+mv -v /usr/share/man/man1/chroot.1 /usr/share/man/man8/chroot.8
+sed -i s/\"1\"/\"8\"/1 /usr/share/man/man8/chroot.8
+
+mv -v /usr/bin/{head,sleep,nice,test,\[} /bin 
+
+cd ..
+
+rm -rf coreutils-8.23
+
+#iana
+
+tar xf iana-etc-2.30.tar.bz2
+
+cd iana-etc-2.30
+
+make
+make install
+
+cd ..
+
+rm -rf iana-etc-2.30
+
+# m4-1.4.17.tar.xz
+
+tar xf m4-1.4.17.tar.xz
+
+cd m4-1.4.17
+
+./configure --prefix=/usr
+
+make 
+make install
+
+cd ..
+
+rm -rf m4-1.4.17
+
+
+#flex
+
+tar xf flex-2.5.39.tar.bz2
+
+cd flex-2.5.39
+
+sed -i -e '/test-bison/d' tests/Makefile.in
+
+./configure --prefix=/usr --docdir=/usr/share/doc/flex-2.5.39
+
+make
+make install
+
+ln -sv flex /usr/bin/lex
+
+cd ..
+
+rm -rf flex-2.5.39
+
+#bison
+
+tar xf bison-3.0.4.tar.xz
+
+cd bison-3.0.4
+
+./configure --prefix=/usr --docdir=/usr/share/doc/bison-3.0.4
+
+make -j8
+make install
+
+cd ..
+
+rm -rf bison-3.0.4
+
+#grep-2.21.tar.xz
+
+tar xf grep-2.21.tar.xz
+
+cd grep-2.21
+
+sed -i -e '/tp++/a  if (ep <= tp) break;' src/kwset.c
+
+./configure --prefix=/usr --bindir=/bin
+
+make
+
+make install
+
+cd ..
+
+rm -rf grep-2.21
+
+#readline-6.3.tar.gz
+
+tar xf readline-6.3.tar.gz
+
+cd readline-6.3
+
+patch -Np1 -i ../readline-6.3-upstream_fixes-3.patch
+sed -i '/MV.*old/d' Makefile.in
+sed -i '/{OLDSUFF}/c:' support/shlib-install
+./configure --prefix=/usr --docdir=/usr/share/doc/readline-6.3
+make SHLIB_LIBS=-lncurses
+
+make SHLIB_LIBS=-lncurses install
+mv -v /usr/lib/lib{readline,history}.so.* /lib
+ln -sfv ../../lib/$(readlink /usr/lib/libreadline.so) /usr/lib/libreadline.so
+ln -sfv ../../lib/$(readlink /usr/lib/libhistory.so ) /usr/lib/libhistory.so
+
+install -v -m644 doc/*.{ps,pdf,html,dvi} /usr/share/doc/readline-6.3
+
+cd ..
+rm -rf readline-6.3
+
+#bash
+
+tar xf bash-4.3.30.tar.gz
+
+cd bash-4.3.30
+
+patch -Np1 -i ../bash-4.3.30-upstream_fixes-1.patch
+
+
+./configure --prefix=/usr                    \
+            --bindir=/bin                    \
+            --docdir=/usr/share/doc/bash-4.3.30 \
+            --without-bash-malloc            \
+            --with-installed-readline
+
+make -j8
+
+make install
+
+cd ..
+rm -rf bash-4.3.30
+
+exec /bin/bash --login +h
