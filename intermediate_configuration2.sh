@@ -1,5 +1,3 @@
-#!/bin/bash
-
 set -e
 
 mkdir -pv /{bin,boot,etc/{opt,sysconfig},home,lib/firmware,mnt,opt}
