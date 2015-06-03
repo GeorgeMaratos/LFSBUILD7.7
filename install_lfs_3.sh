@@ -24,8 +24,6 @@ rm -v dummy.c a.out dummy.log
 mkdir -pv /usr/share/gdb/auto-load/usr/lib
 mv -v /usr/lib/*gdb.py /usr/share/gdb/auto-load/usr/lib
 
-cd ..
-
 rm -rf gcc-4.9.2 gcc-build
 
 
