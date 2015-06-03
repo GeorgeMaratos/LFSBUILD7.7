@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 #this script begins at building the temporary tool chain

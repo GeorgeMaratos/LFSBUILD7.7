@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 touch /var/log/{btmp,lastlog,wtmp}

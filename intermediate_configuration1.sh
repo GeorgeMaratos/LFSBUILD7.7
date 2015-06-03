@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 #run this script after installing the temporary system

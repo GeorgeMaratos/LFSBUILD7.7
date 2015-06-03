@@ -1,4 +1,7 @@
+#!/bin/bash
+
 set -e
+
 #third compilation step after execing the new shell
 
 #bc
