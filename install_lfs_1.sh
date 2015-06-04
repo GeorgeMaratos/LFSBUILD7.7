@@ -148,7 +148,7 @@ echo 'main(){}' > dummy.c
 $LFS_TGT-gcc dummy.c
 readelf -l a.out | grep ': /tools'
 
-read -rsp $'Press any key to continue...\n' -n1 key
+#read -rsp $'Press any key to continue...\n' -n1 key
 rm -v dummy.c a.out
 
 #libstdc++
@@ -277,7 +277,7 @@ echo 'main(){}' > dummy.c
 cc dummy.c
 readelf -l a.out | grep ': /tools'
 
-read -rsp $'Press any key to continue...\n' -n1 key
+#read -rsp $'Press any key to continue...\n' -n1 key
 rm -v dummy.c a.out
 
 
