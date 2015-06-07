@@ -20,6 +20,9 @@ cd binutils-build
     --disable-werror
 
 make -j8 
+case $(uname -m) in
+  x86_64) mkdir -v /tools/lib && ln -sv lib /tools/lib64 ;;
+esac
 make -j8 install
 
 cd ..
